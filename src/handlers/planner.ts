@@ -5,7 +5,7 @@ import {
   formatWibDateTime,
   formatWibDayLabel,
   formatWibTime,
-  isValidDate,
+  parseFlexibleDate,
   parseWibDateTime,
   wibDate,
 } from "../time.js";
@@ -35,13 +35,13 @@ interface ShiftItem {
   work_date: string;
 }
 
-const DAY_HINT = "Pakai: hari ini (kosongkan), besok, atau tanggal YYYY-MM-DD.";
+const DAY_HINT =
+  "Pakai: kosongkan (hari ini), besok, lusa, atau tanggal seperti 10-11-2026 atau 10 nov 2026.";
 
 // Mengubah argumen seperti "besok" atau "2026-11-05" menjadi tanggal YYYY-MM-DD
 function resolveDay(arg?: string): string | null {
-  if (!arg || arg === "hari ini") return wibDate(0);
-  if (arg === "besok") return wibDate(1);
-  return isValidDate(arg) ? arg : null;
+  if (!arg) return wibDate(0);
+  return parseFlexibleDate(arg);
 }
 
 export async function showSchedules(ctx: Context, arg?: string): Promise<void> {
@@ -128,10 +128,12 @@ export const reminderFlow: Flow = {
     {
       kind: "text",
       key: "when",
-      prompt: "Kapan? Format YYYY-MM-DD HH:mm (WIB).\nContoh: 2026-11-03 09:00",
+      prompt:
+        "Kapan? Contoh: besok 09:00, 10 nov 2026 09:00, atau 10-11-2026 09.30",
       validate: (value) => {
         const iso = parseWibDateTime(value);
-        if (!iso) return "Format waktu tidak dikenali.";
+        if (!iso)
+          return "Format waktu tidak dikenali. Contoh: besok 09:00 atau 10-11-2026 09.30.";
         if (new Date(iso).getTime() <= Date.now())
           return "Waktu harus di masa depan.";
         return null;

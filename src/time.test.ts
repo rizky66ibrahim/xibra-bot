@@ -3,7 +3,9 @@ import assert from "node:assert/strict";
 import {
   formatWibTime,
   isValidDate,
+  parseFlexibleDate,
   parseWibDateTime,
+  wibDate,
   wibDateOf,
 } from "./time.js";
 
@@ -24,10 +26,46 @@ test("parseWibDateTime rejects bad input", () => {
   assert.equal(parseWibDateTime("besok jam 9"), null);
 });
 
+test("parseWibDateTime accepts flexible dates with time", () => {
+  assert.equal(
+    parseWibDateTime("10 nov 2026 09:00"),
+    "2026-11-10T09:00:00+07:00",
+  );
+  assert.equal(
+    parseWibDateTime("10-11-2026 09.30"),
+    "2026-11-10T09:30:00+07:00",
+  );
+  assert.equal(parseWibDateTime("besok 08:00"), `${wibDate(1)}T08:00:00+07:00`);
+});
+
 test("isValidDate rejects dates that do not exist", () => {
   assert.equal(isValidDate("2026-11-03"), true);
   assert.equal(isValidDate("2026-02-30"), false);
   assert.equal(isValidDate("03-11-2026"), false);
+});
+
+test("parseFlexibleDate accepts common formats", () => {
+  assert.equal(parseFlexibleDate("2026-11-10"), "2026-11-10");
+  assert.equal(parseFlexibleDate("10-11-2026"), "2026-11-10");
+  assert.equal(parseFlexibleDate("10/11/2026"), "2026-11-10");
+  assert.equal(parseFlexibleDate("10.11.26"), "2026-11-10");
+  assert.equal(parseFlexibleDate("10112026"), "2026-11-10");
+  assert.equal(parseFlexibleDate("20261110"), "2026-11-10");
+  assert.equal(parseFlexibleDate("10 November 2026"), "2026-11-10");
+  assert.equal(parseFlexibleDate("10 nov 2026"), "2026-11-10");
+  assert.equal(parseFlexibleDate("10-nov-2026"), "2026-11-10");
+  assert.equal(parseFlexibleDate("10 Okt. 2026"), "2026-10-10");
+});
+
+test("parseFlexibleDate rejects impossible or unknown input", () => {
+  assert.equal(parseFlexibleDate("31-02-2026"), null);
+  assert.equal(parseFlexibleDate("10 blabla 2026"), null);
+  assert.equal(parseFlexibleDate("minggu depan"), null);
+});
+
+test("parseFlexibleDate understands relative words", () => {
+  assert.equal(parseFlexibleDate("besok"), wibDate(1));
+  assert.equal(parseFlexibleDate("hari ini"), wibDate(0));
 });
 
 test("wibDateOf uses Jakarta time, not UTC", () => {

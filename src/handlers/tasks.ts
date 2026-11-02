@@ -1,6 +1,6 @@
 import type { Context } from "grammy";
 import { bridge } from "../bridge.js";
-import { isValidDate } from "../time.js";
+import { formatDateId, parseFlexibleDate } from "../time.js";
 import { startFlow } from "../wizard/engine.js";
 import type { Flow } from "../wizard/types.js";
 
@@ -38,7 +38,7 @@ export async function showTodo(ctx: Context): Promise<void> {
       task.priority
         ? `prioritas ${PRIORITY_LABEL[task.priority] ?? task.priority}`
         : null,
-      task.due_date ? `tenggat ${task.due_date}` : null,
+      task.due_date ? `tenggat ${formatDateId(task.due_date)}` : null,
     ].filter(Boolean);
 
     return `#${task.id}  ${task.title}${details.length ? `  (${details.join(", ")})` : ""}`;
@@ -103,9 +103,12 @@ export const addTaskFlow: Flow = {
     {
       kind: "text",
       key: "due",
-      prompt: "Tenggatnya? Format YYYY-MM-DD, atau ketik - untuk melewati.",
+      prompt:
+        "Tenggatnya? Contoh: 10-11-2026, 10 nov 2026, atau besok. Ketik - untuk melewati.",
       validate: (value) =>
-        value === "-" || isValidDate(value) ? null : "Format tanggal salah.",
+        value === "-" || parseFlexibleDate(value)
+          ? null
+          : "Format tanggal tidak dikenali. Contoh: 10-11-2026 atau 10 nov 2026.",
     },
   ],
   finish: async (ctx, answers) => {
@@ -113,7 +116,9 @@ export const addTaskFlow: Flow = {
     if (userId === undefined) return;
 
     const dueDate =
-      answers.due && answers.due !== "-" ? answers.due : undefined;
+      answers.due && answers.due !== "-"
+        ? (parseFlexibleDate(answers.due) ?? undefined)
+        : undefined;
 
     const res = await bridge<TaskItem>(userId, "POST", "/tasks", {
       title: answers.title,
