@@ -1,0 +1,1 @@
+Xibra Bot: Telegram bot for Xibra Platform. Account pairing, news wizard, and planned task and finance commands through Xibra API.
