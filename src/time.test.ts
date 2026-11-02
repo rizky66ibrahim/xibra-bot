@@ -23,7 +23,29 @@ test("parseWibDateTime accepts space or T and adds the WIB offset", () => {
 test("parseWibDateTime rejects bad input", () => {
   assert.equal(parseWibDateTime("2026-13-40 10:00"), null);
   assert.equal(parseWibDateTime("2026-11-03 25:00"), null);
-  assert.equal(parseWibDateTime("besok jam 9"), null);
+});
+
+test("parseWibDateTime understands spoken times", () => {
+  assert.equal(
+    parseWibDateTime("besok jam 9 pagi"),
+    `${wibDate(1)}T09:00:00+07:00`,
+  );
+  assert.equal(
+    parseWibDateTime("besok jam 2 sore"),
+    `${wibDate(1)}T14:00:00+07:00`,
+  );
+  assert.equal(
+    parseWibDateTime("besok 8.30 pagi"),
+    `${wibDate(1)}T08:30:00+07:00`,
+  );
+  assert.equal(
+    parseWibDateTime("10 nov 2026 jam 9 malam"),
+    "2026-11-10T21:00:00+07:00",
+  );
+  assert.equal(
+    parseWibDateTime("besok jam 12 siang"),
+    `${wibDate(1)}T12:00:00+07:00`,
+  );
 });
 
 test("parseWibDateTime accepts flexible dates with time", () => {

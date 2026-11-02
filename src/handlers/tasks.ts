@@ -12,11 +12,10 @@ export interface TaskItem {
   due_date: string | null;
   is_completed: boolean;
 }
-
-const PRIORITY_LABEL: Record<string, string> = {
-  low: "rendah",
-  medium: "sedang",
-  high: "tinggi",
+const PRIORITY_ICON: Record<string, string> = {
+  low: "🟢",
+  medium: "🟡",
+  high: "🔴",
 };
 
 export async function showTodo(ctx: Context): Promise<void> {
@@ -28,20 +27,17 @@ export async function showTodo(ctx: Context): Promise<void> {
 
   if (res.data.length === 0) {
     await ctx.reply(
-      "Tidak ada tugas yang belum selesai. Tambah dengan /addtask.",
+      "Tidak ada tugas yang belum selesai. Tambah dengan /addtodo.",
     );
     return;
   }
 
   const lines = res.data.map((task) => {
-    const details = [
-      task.priority
-        ? `prioritas ${PRIORITY_LABEL[task.priority] ?? task.priority}`
-        : null,
-      task.due_date ? `tenggat ${formatDateId(task.due_date)}` : null,
-    ].filter(Boolean);
-
-    return `#${task.id}  ${task.title}${details.length ? `  (${details.join(", ")})` : ""}`;
+    const icon = PRIORITY_ICON[task.priority ?? ""] ?? "⚪";
+    const due = task.due_date
+      ? `  (tenggat ${formatDateId(task.due_date)})`
+      : "";
+    return `#${task.id}  ${icon} ${task.title}${due}`;
   });
 
   await ctx.reply(
@@ -54,7 +50,6 @@ export async function showTodo(ctx: Context): Promise<void> {
     ].join("\n"),
   );
 }
-
 export async function completeTask(
   ctx: Context,
   taskId: number,
@@ -95,9 +90,9 @@ export const addTaskFlow: Flow = {
       key: "priority",
       prompt: "Prioritasnya?",
       options: [
-        { label: "Rendah", value: "low" },
-        { label: "Sedang", value: "medium" },
-        { label: "Tinggi", value: "high" },
+        { label: "🟢 Rendah", value: "low" },
+        { label: "🟡 Sedang", value: "medium" },
+        { label: "🔴 Tinggi", value: "high" },
       ],
     },
     {

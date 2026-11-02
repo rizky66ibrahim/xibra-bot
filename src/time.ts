@@ -102,25 +102,35 @@ export function parseFlexibleDate(input: string): string | null {
   return null;
 }
 
-// Menerima "tanggal jam", misalnya "2026-11-03 09:30", "10 nov 2026 09.30", "besok 08:00"
+const TIME_PATTERN =
+  /^(?:(.*?)\s+)?(?:(?:jam|pukul|pkl)\s*)?(\d{1,2})(?:[:.](\d{2}))?(?:\s*(pagi|siang|sore|malam|subuh))?$/;
+
 export function parseWibDateTime(input: string): string | null {
-  // Mendukung format ISO dengan T: 2026-11-03T09:30
-  const normalized = input
+  const text = input
     .trim()
     .toLowerCase()
     .replace(/\s+/g, " ")
     .replace(/^(\d{4}-\d{2}-\d{2})t/, "$1 ");
 
-  const match = /^(.+?) (\d{1,2})[:.](\d{2})$/.exec(normalized);
+  const match = TIME_PATTERN.exec(text);
   if (!match) return null;
 
-  const [, datePart, hh, mm] = match;
-  const day = parseFlexibleDate(datePart);
+  const [, rawDate = "", hhRaw, mmRaw = "00", period] = match;
+
+  // "jam" atau "pukul" yang tertinggal di bagian tanggal bukan tanggal
+  const datePart = rawDate.replace(/\b(jam|pukul|pkl)$/, "").trim();
+  const day = datePart ? parseFlexibleDate(datePart) : wibDate(0);
   if (!day) return null;
 
-  const hour = +hh;
-  const minute = +mm;
+  let hour = Number(hhRaw);
+  const minute = Number(mmRaw);
   if (hour > 23 || minute > 59) return null;
+
+  if (period === "pagi" || period === "subuh") {
+    if (hour === 12) hour = 0;
+  } else if (period === "siang" || period === "sore" || period === "malam") {
+    if (hour >= 1 && hour < 12) hour += 12;
+  }
 
   return `${day}T${pad(hour)}:${pad(minute)}:00+07:00`;
 }

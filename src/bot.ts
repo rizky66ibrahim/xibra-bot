@@ -16,11 +16,11 @@ import {
   startAddTask,
 } from "./handlers/tasks.js";
 import {
-  reminderFlow,
+  showDay,
   showReminders,
-  showSchedules,
   showShifts,
   startReminderWizard,
+  reminderFlow,
 } from "./handlers/planner.js";
 import {
   registerFlow,
@@ -66,7 +66,7 @@ const MENU_ACTIONS: Record<string, (ctx: Context) => Promise<unknown>> = {
   "m:menu": (ctx) => showMenu(ctx),
   "m:help": (ctx) => ctx.reply(HELP_TEXT),
   "m:todo": (ctx) => showTodo(ctx),
-  "m:jadwal": (ctx) => showSchedules(ctx),
+  "m:jadwal": (ctx) => showDay(ctx),
   "m:pengingat": (ctx) => showReminders(ctx),
   "m:shift": (ctx) => showShifts(ctx),
   "m:addtask": (ctx) => startAddTask(ctx),
@@ -87,7 +87,7 @@ export function createBot(): Bot {
   bot.command("berita", (ctx) => startNewsWizard(ctx, argOf(ctx)));
 
   bot.command("todo", (ctx) => showTodo(ctx));
-  bot.command("addtask", (ctx) => startAddTask(ctx, argOf(ctx)));
+  bot.command("addtodo", (ctx) => startAddTask(ctx, argOf(ctx)));
   bot.command("done", (ctx) => {
     const id = Number(argOf(ctx));
     if (!Number.isInteger(id) || id <= 0) {
@@ -96,7 +96,7 @@ export function createBot(): Bot {
     return completeTask(ctx, id);
   });
 
-  bot.command("jadwal", (ctx) => showSchedules(ctx, argOf(ctx)));
+  bot.command("jadwal", (ctx) => showDay(ctx, argOf(ctx)));
   bot.command("pengingat", (ctx) => showReminders(ctx));
   bot.command("ingatkan", (ctx) => startFlow(ctx, reminderFlow));
   bot.command("shift", (ctx) => showShifts(ctx, argOf(ctx)));

@@ -8,6 +8,7 @@ import {
   parseFlexibleDate,
   parseWibDateTime,
   wibDate,
+  wibDateOf,
 } from "../time.js";
 import { startFlow } from "../wizard/engine.js";
 import type { Flow } from "../wizard/types.js";
@@ -35,6 +36,11 @@ interface ShiftItem {
   work_date: string;
 }
 
+interface DayItem {
+  minute: number;
+  line: string;
+}
+
 const DAY_HINT =
   "Pakai: kosongkan (hari ini), besok, lusa, atau tanggal seperti 10-11-2026 atau 10 nov 2026.";
 
@@ -42,6 +48,11 @@ const DAY_HINT =
 function resolveDay(arg?: string): string | null {
   if (!arg) return wibDate(0);
   return parseFlexibleDate(arg);
+}
+
+function toMinutes(hhmm: string): number {
+  const [h, m] = hhmm.split(":").map(Number);
+  return h * 60 + m;
 }
 
 export async function showSchedules(ctx: Context, arg?: string): Promise<void> {
@@ -90,6 +101,52 @@ export async function showShifts(ctx: Context, arg?: string): Promise<void> {
       `${s.shift_name}: ${formatShiftTime(s.start_time)}–${formatShiftTime(s.end_time)} (istirahat ${s.break_minutes} menit)`,
   );
   await ctx.reply([header, "", ...lines].join("\n"));
+}
+
+// Shift, jadwal, dan pengingat pada satu hari, diurutkan menurut jam
+export async function showDay(ctx: Context, arg?: string): Promise<void> {
+  const userId = ctx.from?.id;
+  if (userId === undefined) return;
+
+  const day = resolveDay(arg);
+  if (!day)
+    return void (await ctx.reply(`Tanggal tidak dikenali. ${DAY_HINT}`));
+
+  const [schedules, shifts, reminders] = await Promise.all([
+    bridge<ScheduleItem[]>(userId, "GET", `/schedules?date=${day}`),
+    bridge<ShiftItem[]>(userId, "GET", `/shifts?date=${day}`),
+    bridge<ReminderItem[]>(userId, "GET", "/reminders"),
+  ]);
+
+  if (!schedules.ok) return void (await ctx.reply(schedules.message));
+  if (!shifts.ok) return void (await ctx.reply(shifts.message));
+  if (!reminders.ok) return void (await ctx.reply(reminders.message));
+
+  const items: DayItem[] = [
+    ...shifts.data.map((s) => ({
+      minute: toMinutes(formatShiftTime(s.start_time)),
+      line: `🕒 ${formatShiftTime(s.start_time)}–${formatShiftTime(s.end_time)}  ${s.shift_name}`,
+    })),
+    ...schedules.data.map((s) => ({
+      minute: toMinutes(formatWibTime(s.start_time)),
+      line: `📅 ${formatWibTime(s.start_time)}–${formatWibTime(s.end_time)}  ${s.title}${s.location ? ` · ${s.location}` : ""}`,
+    })),
+    ...reminders.data
+      .filter((r) => wibDateOf(new Date(r.reminder_at)) === day)
+      .map((r) => ({
+        minute: toMinutes(formatWibTime(r.reminder_at)),
+        line: `⏰ ${formatWibTime(r.reminder_at)}  ${r.title}`,
+      })),
+  ].sort((a, b) => a.minute - b.minute);
+
+  const header = `📆 ${formatWibDayLabel(day)}`;
+  if (items.length === 0) {
+    return void (await ctx.reply(
+      `${header}\n\nTidak ada shift, jadwal, atau pengingat.`,
+    ));
+  }
+
+  await ctx.reply([header, "", ...items.map((i) => i.line)].join("\n"));
 }
 
 export async function showReminders(ctx: Context): Promise<void> {
