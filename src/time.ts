@@ -177,6 +177,14 @@ export function formatWibDayLabel(date: string): string {
 }
 
 // Shift disimpan sebagai "08:00:00" tanpa tanggal
-export function formatShiftTime(value: string): string {
+export function formatShiftTime(
+  start: string | null,
+  end: string | null,
+  value: string,
+): string {
   return value.slice(0, 5);
+}
+
+export function isFriday(date: string): boolean {
+  return new Date(`${date}T12:00:00+07:00`).getUTCDay() === 5;
 }

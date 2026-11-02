@@ -6,6 +6,7 @@ import {
   parseFlexibleDate,
   parseWibDateTime,
   wibDate,
+  isFriday,
   wibDateOf,
 } from "./time.js";
 
@@ -97,4 +98,9 @@ test("wibDateOf uses Jakarta time, not UTC", () => {
 
 test("formatWibTime converts UTC to WIB", () => {
   assert.equal(formatWibTime("2026-11-03T02:30:00Z"), "09:30");
+});
+
+test("isFriday uses WIB calendar day", () => {
+  assert.equal(isFriday("2026-11-06"), true);
+  assert.equal(isFriday("2026-11-07"), false);
 });

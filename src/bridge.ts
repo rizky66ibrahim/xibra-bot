@@ -78,12 +78,14 @@ export async function bridge<T>(
         message: "Data tidak ditemukan.",
       };
     case 400:
-    case 422:
-      return {
-        ok: false,
-        reason: "validation",
-        message: "Data belum lengkap atau tidak valid. Coba lagi.",
-      };
+    case 422: {
+      const fallback = "Data belum lengkap atau tidak valid. Coba lagi.";
+      const message =
+        json.message && json.message !== "Validation failed"
+          ? json.message
+          : fallback;
+      return { ok: false, reason: "validation", message };
+    }
     default:
       console.error(
         `Bridge ${method} ${path} failed with HTTP ${response.status}`,

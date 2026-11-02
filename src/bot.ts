@@ -1,13 +1,9 @@
 import { Bot, type Context } from "grammy";
 import { config } from "./config.js";
 import { pairTelegramAccount } from "./api.js";
-import { bridge, UNLINKED_MESSAGE } from "./bridge.js";
-import {
-  COMING_SOON,
-  HELP_TEXT,
-  PAIR_HINT,
-  showMenu,
-} from "./handlers/menu.js";
+import { UNLINKED_MESSAGE } from "./bridge.js";
+import { COMING_SOON, HELP_TEXT, showMenu } from "./handlers/menu.js";
+import { showStart } from "./handlers/start.js";
 import { newsFlow, refreshNews, startNewsWizard } from "./handlers/news.js";
 import {
   addTaskFlow,
@@ -16,12 +12,21 @@ import {
   startAddTask,
 } from "./handlers/tasks.js";
 import {
+  reminderFlow,
   showDay,
   showReminders,
-  showShifts,
   startReminderWizard,
-  reminderFlow,
 } from "./handlers/planner.js";
+import {
+  blokMalamFlow,
+  catatShiftFlow,
+  cancelBlock,
+  saveBlock,
+  showShifts,
+  standbyFlow,
+  startStandby,
+  startWithDate,
+} from "./handlers/shifts.js";
 import {
   registerFlow,
   handleCallback,
@@ -33,31 +38,8 @@ import { clearSession } from "./wizard/state.js";
 // Format kode dari API: XIBRA-XXXX-XXXX (huruf besar dan angka)
 const CODE_PATTERN = /^XIBRA-[A-Z0-9]{4}-[A-Z0-9]{4}$/;
 
-interface MeResponse {
-  user: { id: number; name: string; username: string };
-}
-
 function argOf(ctx: Context): string | undefined {
   return (ctx.match ?? "").toString().trim() || undefined;
-}
-
-async function showStart(ctx: Context): Promise<void> {
-  const userId = ctx.from?.id;
-  if (userId === undefined) return;
-
-  const res = await bridge<MeResponse>(userId, "GET", "/me");
-
-  if (!res.ok) {
-    if (res.reason === "unlinked") {
-      await ctx.reply(`Halo, saya Xibra Bot.\n\n${PAIR_HINT}`);
-      return;
-    }
-    await ctx.reply(res.message);
-    return;
-  }
-
-  await ctx.reply(`Halo, ${res.data.user.name}! Akun Anda sudah terhubung.`);
-  await showMenu(ctx);
 }
 
 // Aksi tombol menu. Kunci adalah callback_data.
@@ -69,7 +51,7 @@ const MENU_ACTIONS: Record<string, (ctx: Context) => Promise<unknown>> = {
   "m:jadwal": (ctx) => showDay(ctx),
   "m:pengingat": (ctx) => showReminders(ctx),
   "m:shift": (ctx) => showShifts(ctx),
-  "m:addtask": (ctx) => startAddTask(ctx),
+  "m:addtodo": (ctx) => startAddTask(ctx),
   "m:ingatkan": (ctx) => startReminderWizard(ctx),
 };
 
@@ -79,6 +61,9 @@ export function createBot(): Bot {
   registerFlow(newsFlow);
   registerFlow(addTaskFlow);
   registerFlow(reminderFlow);
+  registerFlow(blokMalamFlow);
+  registerFlow(catatShiftFlow);
+  registerFlow(standbyFlow);
 
   bot.command("start", showStart);
   bot.command("menu", (ctx) => showMenu(ctx));
@@ -99,7 +84,15 @@ export function createBot(): Bot {
   bot.command("jadwal", (ctx) => showDay(ctx, argOf(ctx)));
   bot.command("pengingat", (ctx) => showReminders(ctx));
   bot.command("ingatkan", (ctx) => startFlow(ctx, reminderFlow));
+
   bot.command("shift", (ctx) => showShifts(ctx, argOf(ctx)));
+  bot.command("blokmalam", (ctx) =>
+    startWithDate(ctx, blokMalamFlow, argOf(ctx)),
+  );
+  bot.command("catatshift", (ctx) =>
+    startWithDate(ctx, catatShiftFlow, argOf(ctx)),
+  );
+  bot.command("jumat", (ctx) => startStandby(ctx, argOf(ctx)));
 
   bot.command("batal", async (ctx) => {
     if (ctx.from) clearSession(ctx.from.id);
@@ -128,11 +121,19 @@ export function createBot(): Bot {
     return ctx.reply(result.message);
   });
 
-  // Tombol wizard (w:...), muat ulang berita (nr:...), menu (m:...)
+  // Tombol wizard (w:...), konfirmasi blok malam (sb:...), muat ulang berita (nr:...), menu (m:...)
   bot.on("callback_query:data", async (ctx) => {
     const data = ctx.callbackQuery.data;
 
     if (await handleCallback(ctx)) return;
+
+    if (data.startsWith("sb:")) {
+      const [, action, value] = data.split(":");
+      await ctx.answerCallbackQuery().catch(() => undefined);
+      return action === "save" && value
+        ? saveBlock(ctx, value)
+        : cancelBlock(ctx);
+    }
 
     if (data.startsWith("nr:")) {
       const [, categoryId, count] = data.split(":");

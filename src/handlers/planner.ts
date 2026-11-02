@@ -12,8 +12,9 @@ import {
 } from "../time.js";
 import { startFlow } from "../wizard/engine.js";
 import type { Flow } from "../wizard/types.js";
+import { renderShift, type ShiftItem } from "./shifts.js";
 
-interface ScheduleItem {
+export interface ScheduleItem {
   id: number;
   title: string;
   location: string | null;
@@ -21,19 +22,10 @@ interface ScheduleItem {
   end_time: string;
 }
 
-interface ReminderItem {
+export interface ReminderItem {
   id: number;
   title: string;
   reminder_at: string;
-}
-
-interface ShiftItem {
-  id: number;
-  shift_name: string;
-  start_time: string;
-  end_time: string;
-  break_minutes: number;
-  work_date: string;
 }
 
 interface DayItem {
@@ -86,20 +78,24 @@ export async function showShifts(ctx: Context, arg?: string): Promise<void> {
   if (userId === undefined) return;
 
   const day = resolveDay(arg);
-  if (!day)
+  if (!day) {
     return void (await ctx.reply(`Tanggal tidak dikenali. ${DAY_HINT}`));
+  }
 
   const res = await bridge<ShiftItem[]>(userId, "GET", `/shifts?date=${day}`);
-  if (!res.ok) return void (await ctx.reply(res.message));
+
+  if (!res.ok) {
+    return void (await ctx.reply(res.message));
+  }
 
   const header = `🕒 Shift ${formatWibDayLabel(day)}`;
-  if (res.data.length === 0)
-    return void (await ctx.reply(`${header}\n\nTidak ada shift.`));
 
-  const lines = res.data.map(
-    (s) =>
-      `${s.shift_name}: ${formatShiftTime(s.start_time)}–${formatShiftTime(s.end_time)} (istirahat ${s.break_minutes} menit)`,
-  );
+  if (res.data.length === 0) {
+    return void (await ctx.reply(`${header}\n\nTidak ada shift.`));
+  }
+
+  const lines = res.data.map((shift) => renderShift(shift, day));
+
   await ctx.reply([header, "", ...lines].join("\n"));
 }
 
@@ -124,8 +120,8 @@ export async function showDay(ctx: Context, arg?: string): Promise<void> {
 
   const items: DayItem[] = [
     ...shifts.data.map((s) => ({
-      minute: toMinutes(formatShiftTime(s.start_time)),
-      line: `🕒 ${formatShiftTime(s.start_time)}–${formatShiftTime(s.end_time)}  ${s.shift_name}`,
+      minute: s.start ? toMinutes(s.start) : -1,
+      line: renderShift(s, day),
     })),
     ...schedules.data.map((s) => ({
       minute: toMinutes(formatWibTime(s.start_time)),
