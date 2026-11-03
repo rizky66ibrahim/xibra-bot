@@ -1,5 +1,6 @@
 import { createBot } from "./bot.js";
 import { config } from "./core/config.js";
+import { startReminderNotifier } from "./features/reminders/notifier.js";
 
 const bot = createBot();
 
@@ -27,6 +28,7 @@ process.once("SIGINT", stop);
 process.once("SIGTERM", stop);
 
 console.log(`Xibra API base: ${config.apiBase}`);
+startReminderNotifier(bot);
 bot.start({
   onStart: (info) => console.log(`Xibra Bot running as @${info.username}`),
 });

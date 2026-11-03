@@ -18,30 +18,63 @@ export const UNLINKED_MESSAGE =
 
 const TIMEOUT_MS = 8_000;
 
-export async function bridge<T>(
+// Call on behalf of one Telegram user (the API resolves the Xibra user from the header)
+export function bridge<T>(
   telegramUserId: number,
   method: "GET" | "POST" | "PUT" | "DELETE",
   path: string,
   body?: unknown,
 ): Promise<BridgeResult<T>> {
+  return request<T>(
+    method,
+    path,
+    { "X-Telegram-User-Id": String(telegramUserId) },
+    body,
+  );
+}
+
+// Background jobs that are not tied to one user (secret only)
+export function bridgeSystem<T>(
+  method: "GET" | "POST",
+  path: string,
+  body?: unknown,
+): Promise<BridgeResult<T>> {
+  return request<T>(method, path, {}, body);
+}
+
+async function request<T>(
+  method: "GET" | "POST" | "PUT" | "DELETE",
+  path: string,
+  extraHeaders: Record<string, string>,
+  body?: unknown,
+): Promise<BridgeResult<T>> {
   let response: Response;
 
   try {
-    response = await fetch(`${config.apiBase}/api/v1/integrations/telegram${path}`, {
-      method,
-      headers: {
-        Accept: "application/json",
-        ...(body !== undefined ? { "Content-Type": "application/json" } : {}),
-        "X-Telegram-Bot-Secret": config.botSecret,
-        "X-Telegram-User-Id": String(telegramUserId),
+    response = await fetch(
+      `${config.apiBase}/api/v1/integrations/telegram${path}`,
+      {
+        method,
+        headers: {
+          Accept: "application/json",
+          ...(body !== undefined ? { "Content-Type": "application/json" } : {}),
+          "X-Telegram-Bot-Secret": config.botSecret,
+          ...extraHeaders,
+        },
+        body: body !== undefined ? JSON.stringify(body) : undefined,
+        signal: AbortSignal.timeout(TIMEOUT_MS),
       },
-      body: body !== undefined ? JSON.stringify(body) : undefined,
-      signal: AbortSignal.timeout(TIMEOUT_MS),
-    });
+    );
   } catch (err) {
     const cause = (err as { cause?: { code?: string } }).cause;
-    console.error(`Xibra API unreachable (${cause?.code ?? (err as Error).message}) at ${config.apiBase}`);
-    return { ok: false, reason: "unavailable", message: "Xibra API sedang tidak bisa dihubungi. Coba lagi nanti." };
+    console.error(
+      `Xibra API unreachable (${cause?.code ?? (err as Error).message}) at ${config.apiBase}`,
+    );
+    return {
+      ok: false,
+      reason: "unavailable",
+      message: "Xibra API sedang tidak bisa dihubungi. Coba lagi nanti.",
+    };
   }
 
   const json = (await response.json().catch(() => ({}))) as {
@@ -58,18 +91,40 @@ export async function bridge<T>(
     case 403:
       return { ok: false, reason: "unlinked", message: UNLINKED_MESSAGE };
     case 401:
-      console.error("Bridge rejected: bot secret does not match the API configuration.");
-      return { ok: false, reason: "unauthorized", message: "Konfigurasi bot belum benar. Hubungi pemilik Xibra." };
+      console.error(
+        "Bridge rejected: bot secret does not match the API configuration.",
+      );
+      return {
+        ok: false,
+        reason: "unauthorized",
+        message: "Konfigurasi bot belum benar. Hubungi pemilik Xibra.",
+      };
     case 404:
-      return { ok: false, reason: "not_found", message: "Data tidak ditemukan." };
+      return {
+        ok: false,
+        reason: "not_found",
+        message: "Data tidak ditemukan.",
+      };
     case 400:
     case 422: {
-      // Show the API's own message when it is specific (e.g. "Shift sudah tercatat")
-      const specific = json.message && json.message !== "Validation failed" ? json.message : null;
-      return { ok: false, reason: "validation", message: specific ?? "Data belum lengkap atau tidak valid." };
+      const specific =
+        json.message && json.message !== "Validation failed"
+          ? json.message
+          : null;
+      return {
+        ok: false,
+        reason: "validation",
+        message: specific ?? "Data belum lengkap atau tidak valid.",
+      };
     }
     default:
-      console.error(`Bridge ${method} ${path} failed with HTTP ${response.status}`);
-      return { ok: false, reason: "unavailable", message: "Terjadi gangguan di Xibra. Coba lagi beberapa saat lagi." };
+      console.error(
+        `Bridge ${method} ${path} failed with HTTP ${response.status}`,
+      );
+      return {
+        ok: false,
+        reason: "unavailable",
+        message: "Terjadi gangguan di Xibra. Coba lagi beberapa saat lagi.",
+      };
   }
 }
