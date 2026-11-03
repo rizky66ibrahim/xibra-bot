@@ -1,6 +1,6 @@
 {
   "name": "xibra-bot",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Xibra Bot: Telegram front end for Xibra Platform (tasks, schedule, shifts, reminders, news).",
   "private": true,
   "type": "module",
@@ -12,7 +12,7 @@
     "build": "tsc",
     "start": "node dist/index.js",
     "typecheck": "tsc --noEmit",
-    "test": "node --import tsx --test test/core/time.test.ts test/core/wizard.test.ts test/features/news/rss.test.ts test/features/shifts/render.test.ts test/features/finance/money.test.ts"
+    "test": "node --import tsx --test test/core/time.test.ts test/core/wizard.test.ts test/features/news/rss.test.ts test/features/shifts/render.test.ts test/features/finance/money.test.ts test/features/checkin/messages.test.ts"
   },
   "dependencies": {
     "dotenv": "^16.4.5",

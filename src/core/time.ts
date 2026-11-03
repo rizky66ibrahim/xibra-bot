@@ -204,3 +204,13 @@ export function wibHour(): number {
     new Intl.DateTimeFormat("en-GB", { timeZone: TIMEZONE, hour: "numeric", hourCycle: "h23" }).format(new Date()),
   );
 }
+
+// "06:00" style clock of the current WIB time, used by the check-in scheduler
+export function wibHourMinute(): string {
+  return new Intl.DateTimeFormat("en-GB", {
+    timeZone: TIMEZONE,
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).format(new Date());
+}

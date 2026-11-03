@@ -2,6 +2,7 @@ import { createBot } from "./bot.js";
 import { config } from "./core/config.js";
 import { acquireSingleInstance } from "./core/singleton.js";
 import { startReminderNotifier } from "./features/reminders/notifier.js";
+import { startCheckinScheduler } from "./features/checkin/checkin.js";
 
 // Refuse to start if another bot process is already polling this token
 acquireSingleInstance();
@@ -35,6 +36,7 @@ process.once("SIGTERM", stop);
 
 console.log(`Xibra API base: ${config.apiBase}`);
 startReminderNotifier(bot);
+startCheckinScheduler(bot);
 bot.start({
   onStart: (info) => console.log(`Xibra Bot running as @${info.username}`),
 });
