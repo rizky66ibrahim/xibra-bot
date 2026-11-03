@@ -1,8 +1,9 @@
 // Home screen (/start): a short overview of today with one-tap buttons.
 import { InlineKeyboard, type Bot, type Context } from "grammy";
 import { bridge, UNLINKED_MESSAGE } from "../../core/bridge.js";
+import { formatIdr } from "../../core/money.js";
 import { ICON, showOrEdit } from "../../core/ui.js";
-import { formatNowWib, formatDateTime, wibDate, wibHour } from "../../core/time.js";
+import { formatDateTime, formatNowWib, wibDate, wibHour } from "../../core/time.js";
 import { CATEGORIES, ago, loadCategory } from "../news/index.js";
 import { summarizeShift, type ShiftItem } from "../shifts/render.js";
 import type { TaskItem } from "../tasks/tasks.js";
@@ -11,6 +12,12 @@ import type { ReminderItem } from "../reminders/reminders.js";
 
 interface MeResponse {
   user: { id: number; name: string; username: string };
+}
+
+interface SummaryItem {
+  income: number;
+  expense: number;
+  total_balance: number;
 }
 
 function greeting(): string {
@@ -30,9 +37,11 @@ function homeKeyboard(today: string): InlineKeyboard {
     .text(`${ICON.task} Tugas`, "task:list")
     .row()
     .text(`${ICON.reminder} Pengingat`, "reminder:list")
-    .text(`${ICON.news} Berita`, "news:pick")
+    .text(`${ICON.expense} Keuangan`, "fin:refresh")
     .row()
+    .text(`${ICON.news} Berita`, "news:pick")
     .text(`${ICON.add} Tambah`, "add:open")
+    .row()
     .text(`${ICON.refresh} Muat ulang`, "home:refresh");
 }
 
@@ -40,11 +49,12 @@ async function renderHome(userId: number, name: string): Promise<{ text: string;
   const today = wibDate(0);
   const indonesia = CATEGORIES[0];
 
-  const [tasks, shifts, schedules, reminders, news] = await Promise.all([
+  const [tasks, shifts, schedules, reminders, finance, news] = await Promise.all([
     bridge<TaskItem[]>(userId, "GET", "/tasks"),
     bridge<ShiftItem[]>(userId, "GET", `/shifts?date=${today}`),
     bridge<ScheduleItem[]>(userId, "GET", `/schedules?date=${today}`),
     bridge<ReminderItem[]>(userId, "GET", "/reminders"),
+    bridge<SummaryItem>(userId, "GET", "/finance/summary"),
     loadCategory(indonesia, 3),
   ]);
 
@@ -70,14 +80,18 @@ async function renderHome(userId: number, name: string): Promise<{ text: string;
     lines.push(`${ICON.reminder} Berikutnya: ${formatDateTime(next.reminder_at)}, ${next.title}`);
   }
 
+  if (finance.ok) {
+    lines.push(
+      `${ICON.expense} Saldo ${formatIdr(finance.data.total_balance)} · bulan ini keluar ${formatIdr(finance.data.expense)}`,
+    );
+  }
+
   lines.push("", `${ICON.news} Berita ${indonesia.label}`);
   if (news.items.length === 0) {
     lines.push("Belum bisa dimuat.");
   } else {
     for (const item of news.items) lines.push(`• ${item.title} (${item.source} · ${ago(item.publishedAt)})`);
   }
-
-  lines.push("", `${ICON.expense} Keuangan: segera hadir`);
 
   return { text: lines.join("\n"), keyboard: homeKeyboard(today) };
 }
@@ -89,10 +103,7 @@ export async function showHome(ctx: Context): Promise<void> {
   const me = await bridge<MeResponse>(userId, "GET", "/me");
 
   if (!me.ok) {
-    const text =
-      me.reason === "unlinked"
-        ? `Halo! Saya Xibra Bot.\n\n${UNLINKED_MESSAGE}`
-        : me.message;
+    const text = me.reason === "unlinked" ? `Halo! Saya Xibra Bot.\n\n${UNLINKED_MESSAGE}` : me.message;
     return void (await ctx.reply(text));
   }
 
@@ -108,4 +119,3 @@ export function registerHome(bot: Bot): void {
     return showHome(ctx);
   });
 }
-

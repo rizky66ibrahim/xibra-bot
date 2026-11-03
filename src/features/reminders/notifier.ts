@@ -48,10 +48,7 @@ async function deliverDue(bot: Bot): Promise<void> {
     } catch (err) {
       const count = (attempts.get(reminder.id) ?? 0) + 1;
       attempts.set(reminder.id, count);
-      console.error(
-        `Reminder ${reminder.id} send failed (attempt ${count}):`,
-        (err as Error).message,
-      );
+      console.error(`Reminder ${reminder.id} send failed (attempt ${count}):`, (err as Error).message);
 
       if (count >= MAX_ATTEMPTS) {
         await report(reminder.id, "failed");

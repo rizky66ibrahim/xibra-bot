@@ -11,6 +11,7 @@ import { registerReminders } from "./features/reminders/reminders.js";
 import { registerShifts } from "./features/shifts/shifts.js";
 import { registerNews } from "./features/news/index.js";
 import { registerAdd } from "./features/add/add.js";
+import { registerFinance } from "./features/finance/finance.js";
 import { registerPairing } from "./features/pairing/pairing.js";
 import { registerHelp } from "./features/help/help.js";
 
@@ -26,6 +27,7 @@ export function createBot(): Bot {
   registerShifts(bot);
   registerNews(bot);
   registerAdd(bot);
+  registerFinance(bot);
   registerPairing(bot);
   registerHelp(bot);
 
