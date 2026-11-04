@@ -41,7 +41,9 @@ export async function showWeek(ctx: Context, start: string): Promise<void> {
     bridge<ReminderItem[]>(userId, "GET", "/reminders"),
   ]);
 
-  const out: string[] = [`${ICON.week} ${formatDateId(days[0])} – ${formatDateId(days[6])}`];
+  const out: string[] = [
+    `${ICON.week} ${formatDateId(days[0])} – ${formatDateId(days[6])}`,
+  ];
 
   days.forEach((day, i) => {
     const [shifts, schedules] = perDay[i];
@@ -83,13 +85,20 @@ export async function showWeek(ctx: Context, start: string): Promise<void> {
     for (const row of rows) out.push(`   ${row.line}`);
 
     // Friday shift is never guessed: remind the user to answer the standby question
-    const confirmed = shifts.ok && shifts.data.some((s) => s.source === "standby" || s.source === "block");
+    const confirmed =
+      shifts.ok &&
+      shifts.data.some((s) => s.source === "standby" || s.source === "block");
     if (isFriday(day) && shifts.ok && !confirmed) {
-      out.push("   ⚠️ Shift Jumat belum dikonfirmasi. Ketik /shift, lalu Catat shift.");
+      out.push(
+        "   ⚠️ Shift Jumat belum dikonfirmasi. Ketik /shift, lalu Catat shift.",
+      );
     }
   });
 
-  const keyboard = stepNavigation("week", start, 7);
+  const keyboard = stepNavigation("week", start, 7)
+    .row()
+    .text("🏠 Menu Utama", "home:refresh");
+
   await showOrEdit(ctx, out.join("\n"), keyboard);
 }
 
@@ -98,7 +107,9 @@ export function registerWeek(bot: Bot): void {
     const arg = (ctx.match ?? "").toString().trim();
     const start = arg ? parseFlexibleDate(arg) : wibDate(0);
     if (!start || !isValidDate(start)) {
-      return ctx.reply("Tanggal tidak dikenali. Contoh: /week atau /week 10-11-2026.");
+      return ctx.reply(
+        "Tanggal tidak dikenali. Contoh: /week atau /week 10-11-2026.",
+      );
     }
     return showWeek(ctx, start);
   });
