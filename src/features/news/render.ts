@@ -19,11 +19,10 @@ export function renderNewsHtml(
   now = Date.now(),
 ): string {
   const lines = [
-    `📰 <b>Berita ${escapeHtml(category.label)} ${escapeHtml(category.icon)}</b>`,
+    `<b>${escapeHtml(category.icon)} ${escapeHtml(category.label)}</b>`,
     `Diperbarui ${ago(news.fetchedAt, now)}`,
     "",
   ];
-
   if (news.items.length === 0) {
     lines.push("Berita belum bisa dimuat. Coba lagi beberapa menit lagi.");
   } else {
