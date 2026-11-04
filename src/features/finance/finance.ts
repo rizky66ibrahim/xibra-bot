@@ -7,7 +7,11 @@ import { formatDateId, wibDateOf } from "../../core/time.js";
 import { ICON, showOrEdit } from "../../core/ui.js";
 import { registerFlow, startFlow } from "../../core/wizard/engine.js";
 import type { Answers, Flow } from "../../core/wizard/types.js";
-import { addAccountFlow, startAddAccount, type AccountItem } from "./accounts.js";
+import {
+  addAccountFlow,
+  startAddAccount,
+  type AccountItem,
+} from "./accounts.js";
 
 interface CategoryItem {
   id: number;
@@ -55,8 +59,12 @@ const isInvestment = (a: AccountItem): boolean => a.type === "investment";
 // One line per investment: "Emas Antam  Rp 3.000.000 (2 × Rp 1.500.000, harga 4 Nov 2026)"
 function investmentLine(a: AccountItem): string {
   const parts =
-    a.units !== null && a.unit_price !== null ? `${a.units} × ${formatIdr(a.unit_price)}` : "";
-  const when = a.price_updated_at ? `harga ${formatDateId(wibDateOf(new Date(a.price_updated_at)))}` : "";
+    a.units !== null && a.unit_price !== null
+      ? `${a.units} × ${formatIdr(a.unit_price)}`
+      : "";
+  const when = a.price_updated_at
+    ? `harga ${formatDateId(wibDateOf(new Date(a.price_updated_at)))}`
+    : "";
   const detail = [parts, when].filter(Boolean).join(", ");
   return `• ${a.name}  ${formatIdr(a.balance)}${detail ? ` (${detail})` : ""}`;
 }
@@ -87,42 +95,65 @@ export async function showBalance(ctx: Context): Promise<void> {
   if (cash.length > 0) {
     lines.push("Kas & bank");
     for (const a of cash) lines.push(`• ${a.name}  ${formatIdr(a.balance)}`);
-    lines.push(`Total  ${formatIdr(cash.reduce((sum, a) => sum + a.balance, 0))}`, "");
+    lines.push(
+      `Total  ${formatIdr(cash.reduce((sum, a) => sum + a.balance, 0))}`,
+      "",
+    );
   }
 
   if (investments.length > 0) {
     lines.push("Investasi");
     for (const a of investments) lines.push(investmentLine(a));
-    lines.push(`Total  ${formatIdr(investments.reduce((sum, a) => sum + a.balance, 0))}`, "");
+    lines.push(
+      `Total  ${formatIdr(investments.reduce((sum, a) => sum + a.balance, 0))}`,
+      "",
+    );
   }
 
   if (summary.ok) {
-    lines.push(`Bulan ini: masuk ${formatIdr(summary.data.income)} · keluar ${formatIdr(summary.data.expense)}`);
+    lines.push(
+      `Bulan ini: masuk ${formatIdr(summary.data.income)} · keluar ${formatIdr(summary.data.expense)}`,
+    );
   }
 
   if (budgets.ok && budgets.data.length > 0) {
     lines.push("", "Budget");
-    for (const b of budgets.data) lines.push(`• ${b.name}: ${formatIdr(b.spent)} dari ${formatIdr(b.amount)}`);
+    for (const b of budgets.data)
+      lines.push(
+        `• ${b.name}: ${formatIdr(b.spent)} dari ${formatIdr(b.amount)}`,
+      );
   }
 
   const keyboard = new InlineKeyboard()
-    .text("💸 Catat pengeluaran", "fin:expense")
-    .text("💵 Catat pemasukan", "fin:income")
+    .text("➖ Catat Pengeluaran", "fin:expense")
+    .text("➕ Catat Pemasukan", "fin:income")
     .row()
     .text("🏦 Tambah akun", "fin:account");
 
   // Buttons only appear when they can work
-  if (investments.length > 0) keyboard.text("📈 Perbarui harga", "fin:price");
+  if (investments.length > 0) {
+    keyboard.text("📈 Perbarui Harga", "fin:price");
+  }
   keyboard.row();
-  if (goals.ok && goals.data.length > 0) keyboard.text("🎯 Tabung ke goal", "fin:goal");
-  keyboard.text(`${ICON.refresh} Muat ulang`, "fin:refresh");
 
+  if (goals.ok && goals.data.length > 0) {
+    keyboard.text("🎯 Tabung ke Goal", "fin:goal");
+  }
+
+  keyboard
+    .row()
+    .text(`${ICON.refresh} Muat Ulang`, "fin:refresh")
+    .text("🏠 Menu Utama", "home:refresh");
   await showOrEdit(ctx, lines.join("\n"), keyboard);
 }
 
 // Builds a transaction wizard for the user's current accounts and categories.
 // Investment accounts are left out: their value changes only through prices.
-async function startTransaction(ctx: Context, type: "expense" | "income", initial: Answers = {}): Promise<void> {
+async function startTransaction(
+  ctx: Context,
+  type: "expense" | "income",
+  initial: Answers = {},
+): Promise<void> {
   const userId = ctx.from?.id;
   if (userId === undefined) return;
 
@@ -141,7 +172,9 @@ async function startTransaction(ctx: Context, type: "expense" | "income", initia
     return startAddAccount(ctx);
   }
 
-  const categoryOptions = categories.ok ? categories.data.map((c) => ({ label: c.name, value: String(c.id) })) : [];
+  const categoryOptions = categories.ok
+    ? categories.data.map((c) => ({ label: c.name, value: String(c.id) }))
+    : [];
 
   // Flow ids are per user, because account and category choices differ from user to user
   const flow: Flow = {
@@ -151,7 +184,10 @@ async function startTransaction(ctx: Context, type: "expense" | "income", initia
         kind: "text",
         key: "amount",
         prompt: "Berapa nominalnya? Contoh: 25k, 1,5jt, atau 25.000",
-        validate: (v) => (parseIdrAmount(v) ? null : "Nominal tidak dikenali. Contoh: 25k atau 25.000."),
+        validate: (v) =>
+          parseIdrAmount(v)
+            ? null
+            : "Nominal tidak dikenali. Contoh: 25k atau 25.000.",
       },
       {
         kind: "text",
@@ -163,7 +199,10 @@ async function startTransaction(ctx: Context, type: "expense" | "income", initia
         kind: "choice",
         key: "account",
         prompt: type === "expense" ? "Dari akun mana?" : "Masuk ke akun mana?",
-        options: usable.map((a) => ({ label: `${a.name} · ${formatIdr(a.balance)}`, value: String(a.id) })),
+        options: usable.map((a) => ({
+          label: `${a.name} · ${formatIdr(a.balance)}`,
+          value: String(a.id),
+        })),
         skipIf: () => usable.length === 1,
       },
       {
@@ -174,7 +213,8 @@ async function startTransaction(ctx: Context, type: "expense" | "income", initia
         skipIf: () => categoryOptions.length === 0,
       },
     ],
-    finish: async (replyCtx, answers) => finishTransaction(replyCtx, type, usable, answers),
+    finish: async (replyCtx, answers) =>
+      finishTransaction(replyCtx, type, usable, answers),
   };
 
   registerFlow(flow);
@@ -189,19 +229,31 @@ async function finishTransaction(
 ): Promise<void> {
   const userId = ctx.from?.id;
   const amount = parseIdrAmount(answers.amount ?? "");
-  if (userId === undefined || !amount) return void (await ctx.reply("Nominal tidak valid. Coba lagi."));
+  if (userId === undefined || !amount)
+    return void (await ctx.reply("Nominal tidak valid. Coba lagi."));
 
   const accountId = answers.account ?? String(accounts[0].id);
-  const description = answers.description && answers.description !== "-" ? answers.description : undefined;
-  const categoryId = answers.category && answers.category !== "none" ? Number(answers.category) : undefined;
+  const description =
+    answers.description && answers.description !== "-"
+      ? answers.description
+      : undefined;
+  const categoryId =
+    answers.category && answers.category !== "none"
+      ? Number(answers.category)
+      : undefined;
 
-  const res = await bridge<TransactionResult>(userId, "POST", "/finance/transactions", {
-    type,
-    amount,
-    description,
-    account_id: Number(accountId),
-    finance_category_id: categoryId,
-  });
+  const res = await bridge<TransactionResult>(
+    userId,
+    "POST",
+    "/finance/transactions",
+    {
+      type,
+      amount,
+      description,
+      account_id: Number(accountId),
+      finance_category_id: categoryId,
+    },
+  );
 
   if (!res.ok) return void (await ctx.reply(res.message));
 
@@ -213,11 +265,16 @@ async function finishTransaction(
       ? `\nSaldo ${res.data.account_name}: ${formatIdr(res.data.balance_after)}`
       : "";
 
-  await ctx.reply(`${icon} ${label} ${formatIdr(res.data.amount)}${note}${balance}`);
+  await ctx.reply(
+    `${icon} ${label} ${formatIdr(res.data.amount)}${note}${balance}`,
+  );
 }
 
 // /expense 25k makan siang: amount and description can be typed inline
-function transactionFromArgs(ctx: Context, type: "expense" | "income"): Promise<void> {
+function transactionFromArgs(
+  ctx: Context,
+  type: "expense" | "income",
+): Promise<void> {
   const args = (ctx.match ?? "").toString().trim();
   if (!args) return startTransaction(ctx, type);
 
@@ -244,7 +301,9 @@ async function startGoalWizard(ctx: Context): Promise<void> {
   const goals = await bridge<GoalItem[]>(userId, "GET", "/finance/goals");
   if (!goals.ok) return void (await ctx.reply(goals.message));
   if (goals.data.length === 0) {
-    return void (await ctx.reply("Belum ada goal. Tambahkan lewat dashboard Xibra."));
+    return void (await ctx.reply(
+      "Belum ada goal. Tambahkan lewat dashboard Xibra.",
+    ));
   }
 
   const flow: Flow = {
@@ -264,7 +323,8 @@ async function startGoalWizard(ctx: Context): Promise<void> {
         kind: "text",
         key: "amount",
         prompt: "Berapa yang ditabung? Contoh: 100k.",
-        validate: (v) => (parseIdrAmount(v) ? null : "Nominal tidak dikenali. Contoh: 100k."),
+        validate: (v) =>
+          parseIdrAmount(v) ? null : "Nominal tidak dikenali. Contoh: 100k.",
       },
     ],
     finish: async (replyCtx, answers) => {
@@ -272,7 +332,12 @@ async function startGoalWizard(ctx: Context): Promise<void> {
       const amount = parseIdrAmount(answers.amount ?? "");
       if (!amount) return void (await replyCtx.reply("Nominal tidak valid."));
 
-      const res = await bridge<GoalItem>(userId, "POST", `/finance/goals/${id}/contributions`, { amount });
+      const res = await bridge<GoalItem>(
+        userId,
+        "POST",
+        `/finance/goals/${id}/contributions`,
+        { amount },
+      );
       await replyCtx.reply(
         res.ok
           ? `🎯 ${res.data.title}: ${formatIdr(res.data.current_amount)} dari ${formatIdr(res.data.target_amount)}`
@@ -290,12 +355,18 @@ async function startPriceWizard(ctx: Context): Promise<void> {
   const userId = ctx.from?.id;
   if (userId === undefined) return;
 
-  const accounts = await bridge<AccountItem[]>(userId, "GET", "/finance/accounts");
+  const accounts = await bridge<AccountItem[]>(
+    userId,
+    "GET",
+    "/finance/accounts",
+  );
   if (!accounts.ok) return void (await ctx.reply(accounts.message));
 
   const assets = accounts.data.filter(isInvestment);
   if (assets.length === 0) {
-    return void (await ctx.reply("Belum ada akun investasi. Tambahkan lewat /balance, lalu 🏦 Tambah akun."));
+    return void (await ctx.reply(
+      "Belum ada akun investasi. Tambahkan lewat /balance, lalu 🏦 Tambah akun.",
+    ));
   }
 
   const flow: Flow = {
@@ -315,7 +386,10 @@ async function startPriceWizard(ctx: Context): Promise<void> {
         kind: "text",
         key: "price",
         prompt: "Harga per unit sekarang? Contoh: 9500 atau 1,6jt.",
-        validate: (v) => (parseIdrAmount(v) ? null : "Harga tidak dikenali. Contoh: 9500 atau 1,6jt."),
+        validate: (v) =>
+          parseIdrAmount(v)
+            ? null
+            : "Harga tidak dikenali. Contoh: 9500 atau 1,6jt.",
       },
     ],
     finish: async (replyCtx, answers) => {
@@ -323,11 +397,19 @@ async function startPriceWizard(ctx: Context): Promise<void> {
       const price = parseIdrAmount(answers.price ?? "");
       if (!price) return void (await replyCtx.reply("Harga tidak valid."));
 
-      const res = await bridge<AccountItem>(userId, "POST", `/finance/accounts/${id}/price`, { unit_price: price });
+      const res = await bridge<AccountItem>(
+        userId,
+        "POST",
+        `/finance/accounts/${id}/price`,
+        { unit_price: price },
+      );
       if (!res.ok) return void (await replyCtx.reply(res.message));
 
       const a = res.data;
-      const detail = a.units !== null && a.unit_price !== null ? `${a.units} × ${formatIdr(a.unit_price)} = ` : "";
+      const detail =
+        a.units !== null && a.unit_price !== null
+          ? `${a.units} × ${formatIdr(a.unit_price)} = `
+          : "";
       await replyCtx.reply(`📈 ${a.name}: ${detail}${formatIdr(a.balance)}`);
     },
   };
@@ -340,7 +422,9 @@ export function registerFinance(bot: Bot): void {
   registerFlow(addAccountFlow);
 
   bot.command("balance", (ctx) => showBalance(ctx));
-  bot.command(["expense", "spending"], (ctx) => transactionFromArgs(ctx, "expense"));
+  bot.command(["expense", "spending"], (ctx) =>
+    transactionFromArgs(ctx, "expense"),
+  );
   bot.command("income", (ctx) => transactionFromArgs(ctx, "income"));
 
   bot.callbackQuery("fin:refresh", async (ctx) => {
