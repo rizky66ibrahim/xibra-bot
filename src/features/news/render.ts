@@ -5,12 +5,24 @@ import type { CategoryNews } from "./service.js";
 
 // Telegram HTML supports only &amp; &lt; &gt; &quot; as entities
 export function escapeHtml(text: string): string {
-  return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
 }
 
 // One line per item: "1. <a href="...">Title</a> — Source · 13 menit lalu"
-export function renderNewsHtml(category: Category, news: CategoryNews, now = Date.now()): string {
-  const lines = [`📰 <b>Berita ${escapeHtml(category.label)}</b>`, `Diperbarui ${ago(news.fetchedAt, now)}`, ""];
+export function renderNewsHtml(
+  category: Category,
+  news: CategoryNews,
+  now = Date.now(),
+): string {
+  const lines = [
+    `📰 <b>Berita ${escapeHtml(category.label)} ${escapeHtml(category.icon)}</b>`,
+    `Diperbarui ${ago(news.fetchedAt, now)}`,
+    "",
+  ];
 
   if (news.items.length === 0) {
     lines.push("Berita belum bisa dimuat. Coba lagi beberapa menit lagi.");
@@ -22,8 +34,13 @@ export function renderNewsHtml(category: Category, news: CategoryNews, now = Dat
     });
   }
 
-  if (news.stale) lines.push("", "⚠️ Semua sumber gagal. Menampilkan data yang tersimpan sebelumnya.");
-  if (news.failed.length > 0) lines.push("", `⚠️ Gagal memuat: ${escapeHtml(news.failed.join("; "))}`);
+  if (news.stale)
+    lines.push(
+      "",
+      "⚠️ Semua sumber gagal. Menampilkan data yang tersimpan sebelumnya.",
+    );
+  if (news.failed.length > 0)
+    lines.push("", `⚠️ Gagal memuat: ${escapeHtml(news.failed.join("; "))}`);
 
   return lines.join("\n");
 }
