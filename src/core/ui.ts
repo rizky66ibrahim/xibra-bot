@@ -67,16 +67,31 @@ export function captured(ctx: Context, index = 1): string {
   return Array.isArray(match) && match[index] ? String(match[index]) : "";
 }
 
-// Edits the message that held the button, or sends a new one when editing is not possible
-export async function showOrEdit(ctx: Context, text: string, keyboard?: InlineKeyboard): Promise<void> {
-  const options = keyboard ? { reply_markup: keyboard } : undefined;
+// Edits the message that held the button, or sends a new one when editing is not possible.
+// Pass { html: true } for messages that contain <a> or <b> tags (link previews are turned off).
+export async function showOrEdit(
+  ctx: Context,
+  text: string,
+  keyboard?: InlineKeyboard,
+  format?: { html?: boolean },
+): Promise<void> {
+  const options = {
+    ...(keyboard ? { reply_markup: keyboard } : {}),
+    ...(format?.html
+      ? { parse_mode: "HTML" as const, link_preview_options: { is_disabled: true } }
+      : {}),
+  };
 
   if (ctx.callbackQuery) {
     try {
       await ctx.editMessageText(text, options);
       return;
-    } catch {
-      // fall through and send a new message
+    } catch (err) {
+      // Pressing a button that would show the same content: nothing to do, and no duplicate message
+      if (String((err as Error).message ?? err).includes("message is not modified")) {
+        await ctx.answerCallbackQuery().catch(() => undefined);
+        return;
+      }
     }
     await ctx.answerCallbackQuery().catch(() => undefined);
   }

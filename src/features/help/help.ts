@@ -12,7 +12,7 @@ export const HELP_TEXT = [
   "/shift  shift, blok malam, dan standby Jumat",
   "/news  berita terbaru (atau /news teknologi)",
   "/expense 25k makan siang  catat pengeluaran",
-  "/balance  saldo akun dan ringkasan bulan ini",
+  "/balance  kas, bank, investasi, dan ringkasan bulan ini",
   "/add  tambah tugas, jadwal, atau pengingat",
   "/pair KODE  hubungkan akun Xibra",
   "/cancel  batalkan langkah yang sedang berjalan",

@@ -17,6 +17,8 @@ interface MeResponse {
 interface SummaryItem {
   income: number;
   expense: number;
+  cash_balance: number;
+  investment_value: number;
   total_balance: number;
 }
 
@@ -82,8 +84,11 @@ async function renderHome(userId: number, name: string): Promise<{ text: string;
 
   if (finance.ok) {
     lines.push(
-      `${ICON.expense} Saldo ${formatIdr(finance.data.total_balance)} · bulan ini keluar ${formatIdr(finance.data.expense)}`,
+      `${ICON.expense} Kas & bank ${formatIdr(finance.data.cash_balance)} · bulan ini keluar ${formatIdr(finance.data.expense)}`,
     );
+    if (finance.data.investment_value > 0) {
+      lines.push(`📈 Investasi ${formatIdr(finance.data.investment_value)}`);
+    }
   }
 
   lines.push("", `${ICON.news} Berita ${indonesia.label}`);

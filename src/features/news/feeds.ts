@@ -30,7 +30,7 @@ export const CATEGORIES: Category[] = [
   },
   {
     id: 'ekonomi',
-    label: 'Ekonomi & Pasar',
+    label: 'Ekonomi & Saham',
     icon: '💹',
     aliases: ['ekonomi', 'bisnis', 'saham', 'investasi', 'pasar', 'market'],
     feeds: [

@@ -40,3 +40,12 @@ export function formatIdr(value: number): string {
   const sign = rounded < 0 ? "-" : "";
   return `${sign}Rp ${Math.abs(rounded).toLocaleString("id-ID")}`;
 }
+
+// Quantity of an asset (shares, grams, coins). Comma or dot is the decimal mark: 100, 2, 0,05, 1.25.
+// Returns null when the text is not a positive number.
+export function parseUnits(input: string): number | null {
+  const text = input.trim().replace(",", ".");
+  if (!/^\d+(\.\d+)?$/.test(text)) return null;
+  const value = Number(text);
+  return Number.isFinite(value) && value > 0 ? value : null;
+}
