@@ -85,8 +85,28 @@ export const CATEGORIES: Category[] = [
         urls: ["https://feeds.bbci.co.uk/news/world/rss.xml"],
       },
       {
-        source: "Al Jazeera",
-        urls: ["https://www.aljazeera.com/xml/rss/all.xml"],
+        source: "The Guardian",
+        urls: ["https://www.theguardian.com/world/rss"],
+      },
+      {
+        source: "Deutsche Welle",
+        urls: ["https://rss.dw.com/xml/rss-en-all"],
+      },
+      {
+        source: "France 24",
+        urls: ["https://www.france24.com/en/rss"],
+      },
+      {
+        source: "Sky News World",
+        urls: ["https://feeds.skynews.com/feeds/rss/world.xml"],
+      },
+      {
+        source: "NPR",
+        urls: ["https://feeds.npr.org/1001/rss.xml"],
+      },
+      {
+        source: "New York Times",
+        urls: ["https://rss.nytimes.com/services/xml/rss/nyt/World.xml"],
       },
     ],
   },
@@ -162,8 +182,32 @@ export const CATEGORIES: Category[] = [
         urls: ["https://www.pcgamer.com/feeds.xml"],
       },
       {
-        source: "Kotaku",
-        urls: ["https://kotaku.com/rss"],
+        source: "Polygon",
+        urls: ["https://www.polygon.com/rss/index.xml"],
+      },
+      {
+        source: "Eurogamer",
+        urls: ["https://www.eurogamer.net/feed"],
+      },
+      {
+        source: "Rock Paper Shotgun",
+        urls: ["https://www.rockpapershotgun.com/feed"],
+      },
+      {
+        source: "VG247",
+        urls: ["https://vg247.com/feed"],
+      },
+      {
+        source: "Gematsu",
+        urls: ["https://gematsu.com/feed"],
+      },
+      {
+        source: "GamesRadar+",
+        urls: ["https://www.gamesradar.com/feeds.xml"],
+      },
+      {
+        source: "Nintendo Life",
+        urls: ["https://www.nintendolife.com/feeds/latest"],
       },
       {
         source: "GameSpot",
