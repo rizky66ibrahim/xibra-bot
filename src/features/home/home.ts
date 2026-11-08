@@ -15,7 +15,7 @@ import { summarizeShift, type ShiftItem } from "../shifts/render.js";
 import type { TaskItem } from "../tasks/tasks.js";
 import type { ScheduleItem } from "../schedule/schedule.js";
 import type { ReminderItem } from "../reminders/reminders.js";
-import { getUserLocation } from "../weather/location.js";
+import { getUserLocation, getLocationLabel } from "../weather/location.js";
 
 interface MeResponse {
   user: { id: number; name: string; username: string };
@@ -79,7 +79,7 @@ async function renderHome(
 
   // The weather line is skipped quietly when the weather service is unreachable
   if (weather) {
-    lines.push(formatWeatherLine("Lokasi kamu", weather));
+    lines.push(formatWeatherLine(getLocationLabel(userId), weather));
   }
   lines.push("");
 

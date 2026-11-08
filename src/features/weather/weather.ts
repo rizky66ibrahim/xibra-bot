@@ -1,9 +1,15 @@
 import { InlineKeyboard, Keyboard, type Bot, type Context } from "grammy";
 
 import { showOrEdit, withFooter } from "../../core/ui.js";
-import { getUserLocation, saveUserLocation } from "./location.js";
 import { formatWeatherDetail } from "./render.js";
 import { getWeather } from "./service.js";
+import {
+  getUserLocation,
+  saveUserLocation,
+  resolveLocationName,
+  updateUserLocationName,
+  getLocationLabel,
+} from "./location.js";
 
 const LOCATION_KEYBOARD = new Keyboard()
   .requestLocation("📍 Share My Location")
@@ -44,7 +50,7 @@ export async function showWeather(ctx: Context): Promise<void> {
   const weather = await getWeather(location.latitude, location.longitude);
 
   const text = weather
-    ? formatWeatherDetail("Your Location", weather)
+    ? formatWeatherDetail(getLocationLabel(userId), weather)
     : "Unable to load weather information. Please try again later.";
   await showOrEdit(ctx, text, withFooter(new InlineKeyboard(), "weather:show"));
 }
@@ -68,7 +74,10 @@ export function registerWeather(bot: Bot): void {
       await ctx.reply("Invalid location. Please try again.");
       return;
     }
-
+    const details = await resolveLocationName(latitude, longitude);
+    if (details) {
+      updateUserLocationName(ctx.from.id, latitude, longitude, details);
+    }
     await ctx.reply("✅ Location updated successfully.", {
       reply_markup: { remove_keyboard: true },
     });
