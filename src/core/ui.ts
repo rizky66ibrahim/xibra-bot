@@ -98,3 +98,20 @@ export async function showOrEdit(
 
   await ctx.reply(text, options);
 }
+
+// Shared bottom row of every result screen: refresh (when given) and back to the main menu
+export function withFooter(keyboard: InlineKeyboard, refreshData?: string): InlineKeyboard {
+  keyboard.row();
+  if (refreshData) keyboard.text(`${ICON.refresh} Muat ulang`, refreshData);
+  return keyboard.text("🏠 Menu Utama", "home:refresh");
+}
+
+// Confirmation screen for destructive actions
+export function confirmKeyboard(yesData: string, backData: string): InlineKeyboard {
+  return new InlineKeyboard().text("🗑 Ya, hapus", yesData).text("✖ Batal", backData);
+}
+
+// Buttons under a "done" message: jump to the result view, or back to the main menu
+export function viewAndHome(viewLabel: string, viewData: string): InlineKeyboard {
+  return new InlineKeyboard().text(viewLabel, viewData).text("🏠 Menu Utama", "home:refresh");
+}

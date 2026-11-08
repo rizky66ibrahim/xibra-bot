@@ -2,7 +2,7 @@
 import type { Bot, Context } from "grammy";
 import { InlineKeyboard } from "grammy";
 import { bridge } from "../../core/bridge.js";
-import { ICON, dayOptions, resolveDay, showOrEdit } from "../../core/ui.js";
+import { ICON, dayOptions, resolveDay, showOrEdit, withFooter } from "../../core/ui.js";
 import { formatDateTime, parseWibDateTime, wibDate } from "../../core/time.js";
 import { registerFlow, startFlow } from "../../core/wizard/engine.js";
 import type { Flow } from "../../core/wizard/types.js";
@@ -25,7 +25,7 @@ export async function showReminders(ctx: Context): Promise<void> {
       ? "Tidak ada pengingat yang akan datang."
       : res.data.map((r) => `${formatDateTime(r.reminder_at)}  ${r.title}`).join("\n");
 
-  const keyboard = new InlineKeyboard().text(`${ICON.add} Tambah pengingat`, "add:open");
+  const keyboard = withFooter(new InlineKeyboard().text(`${ICON.add} Tambah pengingat`, "add:open"), "reminder:list");
   await showOrEdit(ctx, `${ICON.reminder} Pengingat mendatang\n\n${body}`, keyboard);
 }
 

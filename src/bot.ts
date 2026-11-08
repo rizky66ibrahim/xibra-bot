@@ -10,6 +10,7 @@ import { registerWeek } from "./features/week/week.js";
 import { registerReminders } from "./features/reminders/reminders.js";
 import { registerShifts } from "./features/shifts/shifts.js";
 import { registerNews } from "./features/news/index.js";
+import { registerWeather } from "./features/weather/index.js";
 import { registerAdd } from "./features/add/add.js";
 import { registerFinance } from "./features/finance/finance.js";
 import { registerPairing } from "./features/pairing/pairing.js";
@@ -26,6 +27,7 @@ export function createBot(): Bot {
   registerReminders(bot);
   registerShifts(bot);
   registerNews(bot);
+  registerWeather(bot);
   registerAdd(bot);
   registerFinance(bot);
   registerPairing(bot);

@@ -7,11 +7,12 @@ Telegram front end for Xibra Platform. Every feature lives in its own folder und
 | Command | What it does |
 | --- | --- |
 | `/start` | Today's overview with buttons |
-| `/task` | Open tasks, tap a button to finish one |
-| `/schedule [date]` | Schedule of one day, with previous and next buttons |
+| `/task` | Open tasks: done, edit, delete, add |
+| `/schedule [date]` | Schedule of one day: previous/next, edit, delete, add |
 | `/week [date]` | Next 7 days: shifts, schedule, reminders |
 | `/reminder` | Upcoming reminders |
-| `/shift [date]` | Shift of one day, plus Log shift and Night block buttons |
+| `/shift [date]` | Shift of one day: log or change, night block, delete an entry |
+| `/weather` | Current weather, today's range, rain chance (Open-Meteo) |
 | `/news [category]` | 10 latest headlines (clickable), category buttons underneath |
 | `/expense 25k lunch` | Record an expense (also `/spending`, `/income`) |
 | `/balance` | Cash and bank, investments, this month, budgets |
@@ -20,6 +21,7 @@ Telegram front end for Xibra Platform. Every feature lives in its own folder und
 | `/cancel` | Stop the current step |
 | `/help` | Command list |
 
+Every result screen ends with refresh and a button back to the main menu.
 Most actions have buttons. When the bot asks a question you can tap an option or type the answer.
 Dates accept `besok`, `10-11-2026`, `10 nov`. Amounts accept `25k`, `1,5jt`, `25.000`.
 
@@ -34,6 +36,15 @@ Dates accept `besok`, `10-11-2026`, `10 nov`. Amounts accept `25k`, `1,5jt`, `25
   The value is units x price. Prices change, so update them with **Perbarui harga**.
 
 To change the bank list, edit `src/features/finance/account-options.ts`.
+
+## Weather
+
+The line under the date on `/start` comes from Open-Meteo (free, no key). The place is set in `.env`:
+`WEATHER_LABEL`, `WEATHER_LAT`, `WEATHER_LON` (defaults to Bekasi). If the service is down, the line is left out.
+
+## Command list
+
+The "/" menu comes from `src/features/help/commands.ts`. To paste the same list into @BotFather (`/setcommands`), run `npm run commands`.
 
 ## Automatic messages
 
@@ -56,7 +67,7 @@ src/
     wizard/             step-by-step conversations (engine, state, types)
   features/
     home/  tasks/  schedule/  week/  reminders/  shifts/
-    news/  finance/  checkin/  add/  pairing/  help/
+    news/  weather/  finance/  checkin/  add/  pairing/  help/
 test/                   all tests, mirroring src/
 ```
 

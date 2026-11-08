@@ -3,8 +3,10 @@ import { InlineKeyboard, type Bot, type Context } from "grammy";
 import { bridge, UNLINKED_MESSAGE } from "../../core/bridge.js";
 import { formatIdr } from "../../core/money.js";
 import { ICON, showOrEdit } from "../../core/ui.js";
+import { config } from "../../core/config.js";
 import { formatDateTime, formatNowWib, wibDate, wibHour } from "../../core/time.js";
 import { CATEGORIES, ago, loadCategory } from "../news/index.js";
+import { formatWeatherLine, getWeather } from "../weather/index.js";
 import { summarizeShift, type ShiftItem } from "../shifts/render.js";
 import type { TaskItem } from "../tasks/tasks.js";
 import type { ScheduleItem } from "../schedule/schedule.js";
@@ -44,6 +46,7 @@ function homeKeyboard(today: string): InlineKeyboard {
     .text(`${ICON.news} Berita`, "news:pick")
     .text(`${ICON.add} Tambah`, "add:open")
     .row()
+    .text("🌤️ Cuaca", "weather:show")
     .text(`${ICON.refresh} Muat ulang`, "home:refresh");
 }
 
@@ -51,16 +54,21 @@ async function renderHome(userId: number, name: string): Promise<{ text: string;
   const today = wibDate(0);
   const indonesia = CATEGORIES[0];
 
-  const [tasks, shifts, schedules, reminders, finance, news] = await Promise.all([
+  const [tasks, shifts, schedules, reminders, finance, news, weather] = await Promise.all([
     bridge<TaskItem[]>(userId, "GET", "/tasks"),
     bridge<ShiftItem[]>(userId, "GET", `/shifts?date=${today}`),
     bridge<ScheduleItem[]>(userId, "GET", `/schedules?date=${today}`),
     bridge<ReminderItem[]>(userId, "GET", "/reminders"),
     bridge<SummaryItem>(userId, "GET", "/finance/summary"),
     loadCategory(indonesia, 3),
+    getWeather(),
   ]);
 
-  const lines: string[] = [`${greeting()}, ${name}! 👋`, formatNowWib(), ""];
+  const lines: string[] = [`${greeting()}, ${name}! 👋`, formatNowWib()];
+
+  // The weather line is skipped quietly when the weather service is unreachable
+  if (weather) lines.push(formatWeatherLine(config.weather.label, weather));
+  lines.push("");
 
   if (shifts.ok) {
     const text = shifts.data.length === 0 ? "tidak ada" : shifts.data.map(summarizeShift).join(", ");
