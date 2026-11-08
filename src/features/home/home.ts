@@ -3,14 +3,19 @@ import { InlineKeyboard, type Bot, type Context } from "grammy";
 import { bridge, UNLINKED_MESSAGE } from "../../core/bridge.js";
 import { formatIdr } from "../../core/money.js";
 import { ICON, showOrEdit } from "../../core/ui.js";
-import { config } from "../../core/config.js";
-import { formatDateTime, formatNowWib, wibDate, wibHour } from "../../core/time.js";
+import {
+  formatDateTime,
+  formatNowWib,
+  wibDate,
+  wibHour,
+} from "../../core/time.js";
 import { CATEGORIES, ago, loadCategory } from "../news/index.js";
 import { formatWeatherLine, getWeather } from "../weather/index.js";
 import { summarizeShift, type ShiftItem } from "../shifts/render.js";
 import type { TaskItem } from "../tasks/tasks.js";
 import type { ScheduleItem } from "../schedule/schedule.js";
 import type { ReminderItem } from "../reminders/reminders.js";
+import { getUserLocation } from "../weather/location.js";
 
 interface MeResponse {
   user: { id: number; name: string; username: string };
@@ -50,44 +55,61 @@ function homeKeyboard(today: string): InlineKeyboard {
     .text(`${ICON.refresh} Muat ulang`, "home:refresh");
 }
 
-async function renderHome(userId: number, name: string): Promise<{ text: string; keyboard: InlineKeyboard }> {
+async function renderHome(
+  userId: number,
+  name: string,
+): Promise<{ text: string; keyboard: InlineKeyboard }> {
   const today = wibDate(0);
   const indonesia = CATEGORIES[0];
-
-  const [tasks, shifts, schedules, reminders, finance, news, weather] = await Promise.all([
-    bridge<TaskItem[]>(userId, "GET", "/tasks"),
-    bridge<ShiftItem[]>(userId, "GET", `/shifts?date=${today}`),
-    bridge<ScheduleItem[]>(userId, "GET", `/schedules?date=${today}`),
-    bridge<ReminderItem[]>(userId, "GET", "/reminders"),
-    bridge<SummaryItem>(userId, "GET", "/finance/summary"),
-    loadCategory(indonesia, 3),
-    getWeather(),
-  ]);
+  const location = getUserLocation(userId);
+  const [tasks, shifts, schedules, reminders, finance, news, weather] =
+    await Promise.all([
+      bridge<TaskItem[]>(userId, "GET", "/tasks"),
+      bridge<ShiftItem[]>(userId, "GET", `/shifts?date=${today}`),
+      bridge<ScheduleItem[]>(userId, "GET", `/schedules?date=${today}`),
+      bridge<ReminderItem[]>(userId, "GET", "/reminders"),
+      bridge<SummaryItem>(userId, "GET", "/finance/summary"),
+      loadCategory(indonesia, 3),
+      location
+        ? getWeather(location.latitude, location.longitude)
+        : Promise.resolve(null),
+    ]);
 
   const lines: string[] = [`${greeting()}, ${name}! 👋`, formatNowWib()];
 
   // The weather line is skipped quietly when the weather service is unreachable
-  if (weather) lines.push(formatWeatherLine(config.weather.label, weather));
+  if (weather) {
+    lines.push(formatWeatherLine("Lokasi kamu", weather));
+  }
   lines.push("");
 
   if (shifts.ok) {
-    const text = shifts.data.length === 0 ? "tidak ada" : shifts.data.map(summarizeShift).join(", ");
+    const text =
+      shifts.data.length === 0
+        ? "tidak ada"
+        : shifts.data.map(summarizeShift).join(", ");
     lines.push(`${ICON.shift} Shift: ${text}`);
   }
 
   if (schedules.ok) {
-    lines.push(`${ICON.schedule} Jadwal: ${schedules.data.length === 0 ? "tidak ada" : `${schedules.data.length} item`}`);
+    lines.push(
+      `${ICON.schedule} Jadwal: ${schedules.data.length === 0 ? "tidak ada" : `${schedules.data.length} item`}`,
+    );
   }
 
   if (tasks.ok) {
     const high = tasks.data.filter((t) => t.priority === "high").length;
     const suffix = high > 0 ? ` (${high} prioritas tinggi)` : "";
-    lines.push(`${ICON.task} Tugas belum selesai: ${tasks.data.length}${suffix}`);
+    lines.push(
+      `${ICON.task} Tugas belum selesai: ${tasks.data.length}${suffix}`,
+    );
   }
 
   if (reminders.ok && reminders.data.length > 0) {
     const next = reminders.data[0];
-    lines.push(`${ICON.reminder} Berikutnya: ${formatDateTime(next.reminder_at)}, ${next.title}`);
+    lines.push(
+      `${ICON.reminder} Berikutnya: ${formatDateTime(next.reminder_at)}, ${next.title}`,
+    );
   }
 
   if (finance.ok) {
@@ -103,7 +125,8 @@ async function renderHome(userId: number, name: string): Promise<{ text: string;
   if (news.items.length === 0) {
     lines.push("Belum bisa dimuat.");
   } else {
-    for (const item of news.items) lines.push(`• ${item.title} (${item.source} · ${ago(item.publishedAt)})`);
+    for (const item of news.items)
+      lines.push(`• ${item.title} (${item.source} · ${ago(item.publishedAt)})`);
   }
 
   return { text: lines.join("\n"), keyboard: homeKeyboard(today) };
@@ -116,7 +139,10 @@ export async function showHome(ctx: Context): Promise<void> {
   const me = await bridge<MeResponse>(userId, "GET", "/me");
 
   if (!me.ok) {
-    const text = me.reason === "unlinked" ? `Halo! Saya Xibra Bot.\n\n${UNLINKED_MESSAGE}` : me.message;
+    const text =
+      me.reason === "unlinked"
+        ? `Halo! Saya Xibra Bot.\n\n${UNLINKED_MESSAGE}`
+        : me.message;
     return void (await ctx.reply(text));
   }
 
@@ -128,7 +154,9 @@ export function registerHome(bot: Bot): void {
   bot.command("start", (ctx) => showHome(ctx));
 
   bot.callbackQuery("home:refresh", async (ctx) => {
-    await ctx.answerCallbackQuery({ text: "Diperbarui" }).catch(() => undefined);
+    await ctx
+      .answerCallbackQuery({ text: "Diperbarui" })
+      .catch(() => undefined);
     return showHome(ctx);
   });
 }
