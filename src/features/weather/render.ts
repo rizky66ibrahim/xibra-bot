@@ -18,7 +18,11 @@ export interface Weather {
   hourly: HourlyWeather[];
 }
 
-const CODES: Array<{ codes: number[]; icon: string; text: string }> = [
+const CODES: Array<{
+  codes: number[];
+  icon: string;
+  text: string;
+}> = [
   { codes: [0], icon: "☀️", text: "cerah" },
   { codes: [1], icon: "🌤️", text: "cerah berawan" },
   { codes: [2], icon: "⛅", text: "berawan sebagian" },
@@ -66,21 +70,21 @@ export function parseOpenMeteo(json: unknown): Weather | null {
 
   const temp = num(data?.current?.temperature_2m);
   const code = num(data?.current?.weather_code);
+
   if (temp === null || code === null) return null;
 
   const times = data?.hourly?.time;
   const currentTime = String(data?.current?.time ?? "");
-  const currentHour = Number(currentTime.slice(11, 13));
-
   const hourly: HourlyWeather[] = [];
 
   if (Array.isArray(times)) {
     for (let i = 0; i < times.length; i++) {
       const time = times[i];
+
       if (typeof time !== "string") continue;
 
-      const hour = Number(time.slice(11, 13));
-      if (hour <= currentHour) continue;
+      // ISO local datetime comparison also handles day rollover.
+      if (currentTime && time <= currentTime) continue;
 
       const tempC = at(data?.hourly?.temperature_2m, i);
       const weatherCode = at(data?.hourly?.weather_code, i);
@@ -114,6 +118,7 @@ export function parseOpenMeteo(json: unknown): Weather | null {
 
 export function formatWeatherLine(label: string, weather: Weather): string {
   const { icon, text } = describeWeather(weather.code);
+
   return `${icon} ${label} · ${Math.round(weather.tempC)}°C, ${text}`;
 }
 
@@ -145,32 +150,28 @@ export function formatWeatherDetail(label: string, weather: Weather): string {
     lines.push(`💧 Kelembapan: ${Math.round(weather.humidity)}%`);
   }
 
-  lines.push("", "━━━━━━━━━━━━━━━━━━", "", "🕒 Prakiraan Per Jam:");
+  lines.push("", "━━━━━━━━━━━━━━━━━━", "", "🕒 Prakiraan Per Jam:", "");
 
   if (weather.hourly.length === 0) {
-    lines.push("Data prakiraan per jam belum tersedia.");
+    lines.push("Prakiraan per jam belum tersedia.");
   } else {
     for (const hour of weather.hourly) {
       const condition = describeWeather(hour.code);
 
       const details = [
-        hour.rainChance !== null
-          ? `Hujan ${Math.round(hour.rainChance)}%`
-          : null,
+        hour.rainChance !== null ? `🌧️ ${Math.round(hour.rainChance)}%` : null,
         hour.windKmh !== null ? `💨 ${Math.round(hour.windKmh)} km/j` : null,
         hour.humidity !== null ? `💧 ${Math.round(hour.humidity)}%` : null,
       ]
-        .filter(Boolean)
+        .filter((value): value is string => value !== null)
         .join(" · ");
 
-      lines.push(
-        `${hour.time} | ${condition.icon} ${Math.round(hour.tempC)}°C · ${condition.text}`,
-      );
+      const metrics = details ? ` · ${details}` : "";
 
-      if (details) lines.push(`       ${details}`);
+      lines.push(
+        `• ${hour.time} | ${condition.icon} ${Math.round(hour.tempC)}°C${metrics}`,
+      );
     }
   }
-
-  lines.push("", "Data bersumber dari Open-Meteo.com");
   return lines.join("\n");
 }
