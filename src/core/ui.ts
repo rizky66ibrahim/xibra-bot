@@ -1,9 +1,10 @@
-// Shared UI pieces: icons, day pickers, navigation, and message editing.
+// Shared UI components: icons, day pickers, navigation, and message editing.
+
 import { InlineKeyboard, type Context } from "grammy";
 import { addDays, parseFlexibleDate, wibDate, formatDateId } from "./time.js";
 import type { Answers, Option } from "./wizard/types.js";
 
-// Each feature has its own icon so buttons are easy to tell apart
+// Centralized icons used throughout Xibra Bot.
 export const ICON = {
   schedule: "📅",
   week: "🗓️",
@@ -14,46 +15,72 @@ export const ICON = {
   news: "📰",
   expense: "💰",
   email: "📧",
+
+  weather: "🌦️",
+  location: "📍",
+  temperature: "🌡️",
+  rain: "🌧️",
+  wind: "💨",
+  humidity: "💧",
+
   add: "➕",
   refresh: "↻",
   prev: "◀",
   next: "▶",
   cancel: "✖",
+  home: "🏠",
 } as const;
 
+// Priority indicators.
 export const PRIORITY_ICON: Record<string, string> = {
   low: "🟢",
   medium: "🟡",
   high: "🔴",
 };
 
-// Day choices used by wizards: today, tomorrow, the day after, or a typed date
+// Day choices used by wizards.
 export function dayOptions(): Option[] {
   return [
-    { label: `Hari ini · ${formatDateId(wibDate(0))}`, value: "today" },
-    { label: `Besok · ${formatDateId(wibDate(1))}`, value: "tomorrow" },
-    { label: `Lusa · ${formatDateId(wibDate(2))}`, value: "dayafter" },
-    { label: "📅 Tanggal lain", value: "custom" },
+    {
+      label: `Hari ini · ${formatDateId(wibDate(0))}`,
+      value: "today",
+    },
+    {
+      label: `Besok · ${formatDateId(wibDate(1))}`,
+      value: "tomorrow",
+    },
+    {
+      label: `Lusa · ${formatDateId(wibDate(2))}`,
+      value: "dayafter",
+    },
+    {
+      label: "📅 Tanggal lain",
+      value: "custom",
+    },
   ];
 }
 
-// Turns the answers from dayOptions() into YYYY-MM-DD, or null
+// Resolve selected day into YYYY-MM-DD.
 export function resolveDay(answers: Answers): string | null {
   switch (answers.dayChoice) {
     case "today":
       return wibDate(0);
+
     case "tomorrow":
       return wibDate(1);
+
     case "dayafter":
       return wibDate(2);
+
     case "custom":
       return answers.customDate ? parseFlexibleDate(answers.customDate) : null;
+
     default:
       return null;
   }
 }
 
-// Previous / today / next buttons. `prefix` is the callback prefix of the feature.
+// Previous / today / next navigation.
 export function stepNavigation(
   prefix: string,
   date: string,
@@ -65,17 +92,21 @@ export function stepNavigation(
     .text(`Berikutnya ${ICON.next}`, `${prefix}:${addDays(date, stepDays)}`);
 }
 
-// Returns the first capture group of a callback regex match safely
+// Extract the first capture group from a callback regex match.
 export function captured(ctx: Context, index = 1): string {
   const match = ctx.match;
-  if (Array.isArray(match) && match[index] !== undefined) {
-    return String(match[index]);
+
+  if (!Array.isArray(match) || index < 0) {
+    return "";
   }
-  return "";
+
+  const value = match[index];
+
+  return value !== undefined && value !== null ? String(value) : "";
 }
 
-// Edits the message that held the button, or sends a new one when editing is not possible.
-// Pass { html: true } for messages that contain <a> or <b> tags (link previews are turned off).
+// Edit an existing callback message or send a new message.
+// Supports HTML formatting when explicitly requested.
 export async function showOrEdit(
   ctx: Context,
   text: string,
@@ -87,7 +118,9 @@ export async function showOrEdit(
     ...(format?.html
       ? {
           parse_mode: "HTML" as const,
-          link_preview_options: { is_disabled: true },
+          link_preview_options: {
+            is_disabled: true,
+          },
         }
       : {}),
   };
@@ -95,52 +128,55 @@ export async function showOrEdit(
   if (ctx.callbackQuery) {
     try {
       await ctx.editMessageText(text, options);
+      await ctx.answerCallbackQuery().catch(() => undefined);
+      return;
     } catch (err) {
-      // Pressing a button that would show the same content: ignore "message is not modified"
-      if (
-        !String((err as Error).message ?? err).includes(
-          "message is not modified",
-        )
-      ) {
-        // If it's a different error, fallback to sending a new message
-        await ctx.reply(text, options).catch(() => undefined);
+      const message = String((err as Error).message ?? err);
+
+      // No need to send another message when content is unchanged.
+      if (message.includes("message is not modified")) {
+        await ctx.answerCallbackQuery().catch(() => undefined);
+        return;
       }
-    } finally {
-      // Selalu pastikan callback query di-jawab agar animasi loading di tombol hilang
+
+      // Acknowledge callback before falling back to a new message.
       await ctx.answerCallbackQuery().catch(() => undefined);
     }
-    return;
   }
 
   await ctx.reply(text, options);
 }
 
-// Shared bottom row of every result screen: refresh (when given) and back to the main menu
+// Standard footer for result screens.
 export function withFooter(
   keyboard: InlineKeyboard,
   refreshData?: string,
 ): InlineKeyboard {
   keyboard.row();
-  if (refreshData) keyboard.text(`${ICON.refresh} Muat ulang`, refreshData);
-  return keyboard.text("🏠 Menu Utama", "home:refresh");
+
+  if (refreshData) {
+    keyboard.text(`${ICON.refresh} Muat Ulang`, refreshData);
+  }
+
+  return keyboard.text(`${ICON.home} Menu Utama`, "home:refresh");
 }
 
-// Confirmation screen for destructive actions
+// Confirmation keyboard for destructive actions.
 export function confirmKeyboard(
   yesData: string,
   backData: string,
 ): InlineKeyboard {
   return new InlineKeyboard()
     .text("🗑 Ya, hapus", yesData)
-    .text("✖ Batal", backData);
+    .text(`${ICON.cancel} Batal`, backData);
 }
 
-// Buttons under a "done" message: jump to the result view, or back to the main menu
+// Buttons under a completed action.
 export function viewAndHome(
   viewLabel: string,
   viewData: string,
 ): InlineKeyboard {
   return new InlineKeyboard()
     .text(viewLabel, viewData)
-    .text("🏠 Menu Utama", "home:refresh");
+    .text(`${ICON.home} Menu Utama`, "home:refresh");
 }
