@@ -54,17 +54,24 @@ export function resolveDay(answers: Answers): string | null {
 }
 
 // Previous / today / next buttons. `prefix` is the callback prefix of the feature.
-export function stepNavigation(prefix: string, date: string, stepDays = 1): InlineKeyboard {
+export function stepNavigation(
+  prefix: string,
+  date: string,
+  stepDays = 1,
+): InlineKeyboard {
   return new InlineKeyboard()
     .text(`${ICON.prev} Sebelumnya`, `${prefix}:${addDays(date, -stepDays)}`)
     .text("Hari ini", `${prefix}:${wibDate(0)}`)
     .text(`Berikutnya ${ICON.next}`, `${prefix}:${addDays(date, stepDays)}`);
 }
 
-// Returns the first capture group of a callback regex match
+// Returns the first capture group of a callback regex match safely
 export function captured(ctx: Context, index = 1): string {
   const match = ctx.match;
-  return Array.isArray(match) && match[index] ? String(match[index]) : "";
+  if (Array.isArray(match) && match[index] !== undefined) {
+    return String(match[index]);
+  }
+  return "";
 }
 
 // Edits the message that held the button, or sends a new one when editing is not possible.
@@ -78,40 +85,62 @@ export async function showOrEdit(
   const options = {
     ...(keyboard ? { reply_markup: keyboard } : {}),
     ...(format?.html
-      ? { parse_mode: "HTML" as const, link_preview_options: { is_disabled: true } }
+      ? {
+          parse_mode: "HTML" as const,
+          link_preview_options: { is_disabled: true },
+        }
       : {}),
   };
 
   if (ctx.callbackQuery) {
     try {
       await ctx.editMessageText(text, options);
-      return;
     } catch (err) {
-      // Pressing a button that would show the same content: nothing to do, and no duplicate message
-      if (String((err as Error).message ?? err).includes("message is not modified")) {
-        await ctx.answerCallbackQuery().catch(() => undefined);
-        return;
+      // Pressing a button that would show the same content: ignore "message is not modified"
+      if (
+        !String((err as Error).message ?? err).includes(
+          "message is not modified",
+        )
+      ) {
+        // If it's a different error, fallback to sending a new message
+        await ctx.reply(text, options).catch(() => undefined);
       }
+    } finally {
+      // Selalu pastikan callback query di-jawab agar animasi loading di tombol hilang
+      await ctx.answerCallbackQuery().catch(() => undefined);
     }
-    await ctx.answerCallbackQuery().catch(() => undefined);
+    return;
   }
 
   await ctx.reply(text, options);
 }
 
 // Shared bottom row of every result screen: refresh (when given) and back to the main menu
-export function withFooter(keyboard: InlineKeyboard, refreshData?: string): InlineKeyboard {
+export function withFooter(
+  keyboard: InlineKeyboard,
+  refreshData?: string,
+): InlineKeyboard {
   keyboard.row();
   if (refreshData) keyboard.text(`${ICON.refresh} Muat ulang`, refreshData);
   return keyboard.text("🏠 Menu Utama", "home:refresh");
 }
 
 // Confirmation screen for destructive actions
-export function confirmKeyboard(yesData: string, backData: string): InlineKeyboard {
-  return new InlineKeyboard().text("🗑 Ya, hapus", yesData).text("✖ Batal", backData);
+export function confirmKeyboard(
+  yesData: string,
+  backData: string,
+): InlineKeyboard {
+  return new InlineKeyboard()
+    .text("🗑 Ya, hapus", yesData)
+    .text("✖ Batal", backData);
 }
 
 // Buttons under a "done" message: jump to the result view, or back to the main menu
-export function viewAndHome(viewLabel: string, viewData: string): InlineKeyboard {
-  return new InlineKeyboard().text(viewLabel, viewData).text("🏠 Menu Utama", "home:refresh");
+export function viewAndHome(
+  viewLabel: string,
+  viewData: string,
+): InlineKeyboard {
+  return new InlineKeyboard()
+    .text(viewLabel, viewData)
+    .text("🏠 Menu Utama", "home:refresh");
 }

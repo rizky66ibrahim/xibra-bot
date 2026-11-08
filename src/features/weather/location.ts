@@ -1,6 +1,7 @@
 export interface UserLocation {
   latitude: number;
   longitude: number;
+  village?: string;
   district?: string;
   city?: string;
   province?: string;
@@ -8,11 +9,13 @@ export interface UserLocation {
 
 interface NominatimResponse {
   address?: {
-    city_district?: string;
+    village?: string;
+    town?: string;
+    hamlet?: string;
     suburb?: string;
+    city_district?: string;
     borough?: string;
     city?: string;
-    town?: string;
     municipality?: string;
     county?: string;
     state?: string;
@@ -54,13 +57,13 @@ export function getUserLocation(userId: number): UserLocation | null {
 export function getLocationLabel(userId: number): string {
   const location = getUserLocation(userId);
 
-  if (!location) return "Location not yet set";
+  if (!location) return "Lokasi belum diatur";
 
-  if (location.district && location.city) {
-    return `${location.district}, ${location.city}`;
-  }
+  const area = location.village || location.district;
+  const city = location.city;
 
-  return location.city || location.district || "Surrounding area";
+  if (area && city) return `${area}, ${city}`;
+  return city || area || "Area sekitar";
 }
 
 export async function resolveLocationName(
@@ -74,7 +77,6 @@ export async function resolveLocationName(
 
   const task = requestQueue.then(async () => {
     const wait = Math.max(0, 1100 - (Date.now() - lastRequestAt));
-
     if (wait > 0) {
       await new Promise((resolve) => setTimeout(resolve, wait));
     }
@@ -97,6 +99,7 @@ export async function resolveLocationName(
             "User-Agent": "XibraBot/1.0 (Weather Location Lookup)",
             "Accept-Language": "id",
           },
+          signal: AbortSignal.timeout(8000),
         },
       );
 
@@ -107,25 +110,28 @@ export async function resolveLocationName(
 
       if (!address) return null;
 
-      const district =
-        address.city_district || address.suburb || address.borough;
+      const village = address.village || address.hamlet || address.town;
 
-      const city =
-        address.city || address.town || address.county || address.municipality;
+      const district =
+        address.suburb || address.city_district || address.borough;
+
+      const city = address.city || address.municipality || address.county;
 
       const result = {
+        village,
         district,
         city,
         province: address.state,
       };
 
-      if (district || city) {
+      if (village || district || city) {
         geocodeCache.set(key, result);
         return result;
       }
 
       return null;
-    } catch {
+    } catch (error) {
+      console.error("Location lookup failed:", (error as Error).message);
       return null;
     }
   });
@@ -134,7 +140,6 @@ export async function resolveLocationName(
     () => undefined,
     () => undefined,
   );
-
   return task;
 }
 

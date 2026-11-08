@@ -2,7 +2,7 @@ import { parseOpenMeteo, type Weather } from "./render.js";
 
 const CACHE_MS = 10 * 60 * 1000;
 const FAILURE_COOLDOWN_MS = 60 * 1000;
-const TIMEOUT_MS = 5_000;
+const TIMEOUT_MS = 8_000;
 
 interface WeatherCache {
   at: number;
@@ -20,31 +20,34 @@ function buildUrl(latitude: number, longitude: number): string {
   const params = new URLSearchParams({
     latitude: String(latitude),
     longitude: String(longitude),
-    current: "temperature_2m,weather_code",
+    current: "temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m",
+    hourly:
+      "temperature_2m,relative_humidity_2m,precipitation_probability,weather_code,wind_speed_10m",
     daily:
       "temperature_2m_max,temperature_2m_min,precipitation_probability_max",
     forecast_days: "1",
     timezone: "auto",
   });
 
-  return `https://api.open-meteo.com/v1/forecast?${params.toString()}`;
+  return `https://api.open-meteo.com/v1/forecast?${params}`;
 }
 
 export async function getWeather(
   latitude: number,
   longitude: number,
+  forceRefresh = false,
 ): Promise<Weather | null> {
   const key = locationKey(latitude, longitude);
   const now = Date.now();
   const cached = cache.get(key);
 
-  if (cached && now - cached.at < CACHE_MS) {
+  if (!forceRefresh && cached && now - cached.at < CACHE_MS) {
     return cached.value;
   }
 
   const lastFailureAt = failures.get(key) ?? 0;
 
-  if (now - lastFailureAt < FAILURE_COOLDOWN_MS) {
+  if (!forceRefresh && now - lastFailureAt < FAILURE_COOLDOWN_MS) {
     return cached?.value ?? null;
   }
 
@@ -69,9 +72,7 @@ export async function getWeather(
     return weather;
   } catch (err) {
     failures.set(key, Date.now());
-
     console.error("Weather unavailable:", (err as Error).message);
-
     return cached?.value ?? null;
   }
 }
